@@ -46,7 +46,7 @@ namespace FaultyStorage
                     int corruptionChance = (int)corruptionChanceInput.Value;
                     Random random = new Random();
                     int roll = random.Next() % 101;
-                    //OutputText("Corruption rolled a " + roll.ToString());
+                    
                     if (roll < corruptionChance)
                     {
                         int fileIndex = random.Next(0, storedFiles.Count);
@@ -80,6 +80,7 @@ namespace FaultyStorage
             UdpClient sendClient = new UdpClient();
 
             OutputText("Listening on port 1982");
+            OutputText("Responding on port 1983");
 
             while (!done)
             {
@@ -137,8 +138,9 @@ namespace FaultyStorage
                 string filename = Encoding.ASCII.GetString(writeMessage, 1, 32);
                 filename = filename.TrimEnd('\0');
                 int location = BitConverter.ToInt32(writeMessage, 33);
-                byte[] data = new byte[10];
-                Buffer.BlockCopy(writeMessage, 37, data, 0, 10);
+                byte dataLength = writeMessage[37];
+                byte[] data = new byte[dataLength];
+                Buffer.BlockCopy(writeMessage, 38, data, 0, dataLength);
 
                 OutputText("Filename: " + filename);
                 OutputText("Location: " + location.ToString());
@@ -196,7 +198,7 @@ namespace FaultyStorage
             int location = BitConverter.ToInt32(readMessage, 33);
 
             // Build response
-            byte[] response = new byte[48];
+            byte[] response = new byte[49];
             Buffer.BlockCopy(readMessage, 0, response, 0, readMessage.Length);
 
             response[0] = (byte)'D';
@@ -205,12 +207,12 @@ namespace FaultyStorage
 
             if (random % 101 <= readFailureRateInput.Value)
             {
-                response[47] = 0;
+                response[48] = 0;
                 OutputText("Read failed");
             }
             else
             {                
-                response[47] = 1;
+                response[48] = 1;
                 // do read
                 try
                 {
@@ -220,9 +222,18 @@ namespace FaultyStorage
                         using (BinaryReader reader = new BinaryReader(fileStream))
                         {
                             fileStream.Position = location;
+
+                            long byteCountToRead = 10;
+
+                            if (fileStream.Length - fileStream.Position < 10)
+                            {
+                                byteCountToRead = fileStream.Length - fileStream.Position;
+                            }
                             byte[] data = reader.ReadBytes(10);
 
-                            Buffer.BlockCopy(data, 0, response, 37, 10);
+                            response[37] = (byte)byteCountToRead;
+
+                            Buffer.BlockCopy(data, 0, response, 38, (int)byteCountToRead);
 
                             reader.Close();
                             reader.Dispose();
@@ -234,11 +245,11 @@ namespace FaultyStorage
                 }
                 catch(Exception)
                 {
-                    response[47] = 0;
+                    response[48] = 0;
                 }
             }
 
-            OutputText("Read " + (response[47] == 0 ? "failed" : "successful"));
+            OutputText("Read " + (response[48] == 0 ? "failed" : "successful"));
             return response;
         }
 

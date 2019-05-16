@@ -80,5 +80,11 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="TestFiles\SmallBinary.jpg" />
+    <Content Include="TestFiles\LargeTextFile.txt" />
+    <Content Include="TestFiles\LargeBinary.wav" />
+    <Content Include="TestFiles\SmalTextFile.txt" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
